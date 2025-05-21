@@ -35,27 +35,37 @@ ninja() {
   local default_session_name="$timestamp"
   local session_name="$default_session_name"
   local log_file=""
-  local command="$@"
+  local command=""
 
-  while getopts "n:l:" opt; do
-    case "$opt" in
-      n)
-        session_name="$OPTARG"
-        shift # OPTIND を進める
-        shift # -n と引数をスキップ
-        command="$@"
-        break # オプション処理を終了
+  # オプションの解析
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -n|--session_name|--name)
+        if [[ -n "$2" ]]; then
+          session_name="$2"
+          shift 2
+        else
+          echo "Error: $1 requires an argument." >&2
+          return 1
+        fi
         ;;
-      l)
-        log_file="$OPTARG"
-        shift # OPTIND を進める
-        shift # -l と引数をスキップ
-        command="$@"
-        break # オプション処理を終了
+      -l|--log)
+        if [[ -n "$2" ]]; then
+          log_file="$2"
+          shift 2
+        else
+          echo "Error: $1 requires an argument." >&2
+          return 1
+        fi
         ;;
-      \?)
-        echo "Usage: ninja [-n <session_name>] <command> ..." >&2
+      -*)
+        echo "Unknown option: $1" >&2
         return 1
+        ;;
+      *)
+        # オプションでない引数（コマンド）に到達
+        command="$@"
+        break
         ;;
     esac
   done
@@ -65,47 +75,6 @@ ninja() {
     mkdir -p "$(dirname "$log_file")"
   fi
 
-  while [[ $# -gt 0 && "${1:0:1}" == "-" ]]; do
-    case "$1" in
-      --session_name)
-        if [[ -n "$2" ]]; then
-          session_name="$2"
-          shift
-          shift
-        else
-          echo "Error: --session_name requires an argument." >&2
-          return 1
-        fi
-        ;;
-      --name)
-        if [[ -n "$2" ]]; then
-          session_name="$2"
-          shift
-          shift
-        else
-          echo "Error: --name requires an argument." >&2
-          return 1
-        fi
-        ;;
-      --log)
-        if [[ -n "$2" ]]; then
-          log_file="$2"
-          shift
-          shift
-        else
-          echo "Error: --log requires an argument." >&2
-          return 1
-        fi
-        ;;
-      *)
-        break # オプションでない引数に到達
-        ;;
-    esac
-  done
-  shift $((OPTIND - 1)) # getopts で処理したオプション以外の引数を削除
-
-  command="$@"
-
   if [[ -n "$command" ]]; then
     # セッション名の重複チェック
     if check_session "$session_name"; then
@@ -114,10 +83,16 @@ ninja() {
       session_name="$default_session_name"
     fi
 
+    # セッション情報の表示
+    echo -e "session-name : $session_name"
+    echo -e "command\t: $command"
     if [[ -n "$log_file" ]]; then
-      tmux new-session -d -s "$session_name" \; send-keys "$command > '$log_file' 2>&1" Enter \; detach
+      echo -e "logfile\t: $log_file"
+      # ログ出力ありの場合は、シェル経由で実行してリダイレクト
+      tmux new-session -d -s "$session_name" "exec $command > '$log_file' 2>&1" \; detach
     else
-      tmux new-session -d -s "$session_name" \; send-keys "$command" Enter \; detach
+      # コマンドを直接実行
+      tmux new-session -d -s "$session_name" "exec $command" \; detach
     fi
   else
     echo "Error: No command specified." >&2
