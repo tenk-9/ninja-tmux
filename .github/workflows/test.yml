@@ -1,0 +1,86 @@
+name: Ninja Test
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install tmux
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tmux
+
+      - name: Setup test environment
+        run: |
+          mkdir -p /tmp/ninja_test
+
+      - name: Test ninja.sh
+        run: |
+          # シェルスクリプトをテスト
+          bash -n ninja.sh
+          # ninja関数をソース
+          source ninja.sh
+          
+          # テストケースの実行
+          test_ninja() {
+            local failed=0
+            
+            # デフォルトセッション名のテスト
+            echo "Testing default session name..."
+            output=$(ninja echo "test" 2>&1)
+            if ! echo "$output" | grep -q "session-name : [0-9]\{8\}_[0-9]\{6\}"; then
+              echo "❌ Default session name test failed"
+              failed=1
+            fi
+            
+            # カスタムセッション名のテスト
+            echo "Testing custom session name..."
+            output=$(ninja -n "test_session" echo "test" 2>&1)
+            if ! echo "$output" | grep -q "session-name : test_session"; then
+              echo "❌ Custom session name test failed"
+              failed=1
+            fi
+            
+            # セッション名重複のテスト
+            echo "Testing duplicate session name..."
+            ninja -n "duplicate_test" echo "test1" > /dev/null
+            output=$(ninja -n "duplicate_test" echo "test2" 2>&1)
+            if ! echo "$output" | grep -q "session-name : duplicate_test(1)"; then
+              echo "❌ Duplicate session name test failed"
+              failed=1
+            fi
+            
+            # ログファイル出力のテスト
+            echo "Testing log file output..."
+            log_file="/tmp/ninja_test/test.log"
+            ninja -l "$log_file" echo "test_message" > /dev/null
+            sleep 1
+            if [[ ! -f "$log_file" ]] || ! grep -q "test_message" "$log_file"; then
+              echo "❌ Log file test failed"
+              failed=1
+            fi
+            
+            if [ $failed -eq 0 ]; then
+              echo "\n✅ All tests passed!"
+              return 0
+            else
+              echo "\n❌ Some tests failed"
+              return 1
+            fi
+          }
+          
+          # テストの実行
+          test_ninja
+
+      - name: Cleanup
+        if: always()
+        run: |
+          rm -rf /tmp/ninja_test
+          tmux kill-server || true
