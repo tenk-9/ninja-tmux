@@ -114,10 +114,16 @@ ninja() {
       session_name="$default_session_name"
     fi
 
+    # セッション情報の表示
+    echo -e "session-name : $session_name"
+    echo -e "command\t: $command"
     if [[ -n "$log_file" ]]; then
-      tmux new-session -d -s "$session_name" \; send-keys "$command > '$log_file' 2>&1" Enter \; detach
+      echo -e "logfile\t: $log_file"
+      # ログ出力ありの場合は、シェル経由で実行してリダイレクト
+      tmux new-session -d -s "$session_name" "exec $command > '$log_file' 2>&1" \; detach
     else
-      tmux new-session -d -s "$session_name" \; send-keys "$command" Enter \; detach
+      # コマンドを直接実行
+      tmux new-session -d -s "$session_name" "exec $command" \; detach
     fi
   else
     echo "Error: No command specified." >&2
