@@ -1,6 +1,22 @@
 #!/bin/bash
 
 ninja() {
+  # ヘルプオプションの早期チェック
+  if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
+    echo "Usage: ninja [-n <session_name>] [-l <log_file>] <command> ..."
+    echo ""
+    echo "Options:"
+    echo "  -n <session_name>   Specify the tmux session name."
+    echo "  --session_name <session_name> Specify the tmux session name."
+    echo "  --name <session_name>        Specify the tmux session name."
+    echo "  -l <log_file>       Specify the log file path."
+    echo "  --log <log_file>    Specify the log file path."
+    echo "  -h, --help            Show this help message and exit."
+    echo ""
+    echo "Default session name format:<ctrl3348>MMDD_HHMMSS"
+    return 0
+  fi
+
   local timestamp=$(date +%Y%m%d_%H%M%S)
   local default_session_name="$timestamp"
   local session_name="$default_session_name"
@@ -23,27 +39,13 @@ ninja() {
         command="$@"
         break # オプション処理を終了
         ;;
-      h)
-        echo "Usage: ninja [-n <session_name>] [-l <log_file>] <command> ..."
-        echo ""
-        echo "Options:"
-        echo "  -n <session_name>   Specify the tmux session name."
-        echo "  --session_name <session_name> Specify the tmux session name."
-        echo "  --name <session_name>        Specify the tmux session name."
-        echo "  -l <log_file>       Specify the log file path."
-        echo "  --log <log_file>    Specify the log file path."
-        echo "  -h, --help            Show this help message and exit."
-        echo ""
-        echo "Default session name format:<ctrl3348>MMDD_HHMMSS"
-        return 0
-        ;;
       \?)
         echo "Usage: ninja [-n <session_name>] <command> ..." >&2
         return 1
         ;;
     esac
   done
-  # getopts で処理したオプションとその引数を取り除く
+
   # ログファイルのディレクトリを作成
   if [[ -n "$log_file" ]]; then
     mkdir -p "$(dirname "$log_file")"
@@ -80,20 +82,6 @@ ninja() {
           echo "Error: --log requires an argument." >&2
           return 1
         fi
-        ;;
-      --help)
-        echo "Usage: ninja [-n <session_name>] [-l <log_file>] <command> ..."
-        echo ""
-        echo "Options:"
-        echo "  -n <session_name>   Specify the tmux session name."
-        echo "  --session_name <session_name> Specify the tmux session name."
-        echo "  --name <session_name>        Specify the tmux session name."
-        echo "  -l <log_file>       Specify the log file path."
-        echo "  --log <log_file>    Specify the log file path."
-        echo "  -h, --help            Show this help message and exit."
-        echo ""
-        echo "Default session name format:<ctrl3348>MMDD_HHMMSS"
-        return 0
         ;;
       *)
         break # オプションでない引数に到達
