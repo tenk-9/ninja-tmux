@@ -1,13 +1,43 @@
 #!/bin/bash
 
+# セッションの存在チェック関数
+check_session() {
+  local session_name="$1"
+  # list-sessionsの出力を確認
+  if tmux list-sessions -F "#{session_name}" 2>/dev/null | grep -q "^${session_name}$"; then
+    return 0  # セッションが存在する
+  else
+    # has-sessionでも確認（killed状態のセッション用）
+    if ! tmux has-session -t "$session_name" 2>/dev/null; then
+      return 1  # セッションが存在しない
+    fi
+  fi
+}
+
 ninja() {
+  # ヘルプオプションの早期チェック
+  if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
+    echo "Usage: ninja [-n <session_name>] [-l <log_file>] <command> ..."
+    echo ""
+    echo "Options:"
+    echo "  -n <session_name>   Specify the tmux session name."
+    echo "  --session_name <session_name> Specify the tmux session name."
+    echo "  --name <session_name>        Specify the tmux session name."
+    echo "  -l <log_file>       Specify the log file path."
+    echo "  --log <log_file>    Specify the log file path."
+    echo "  -h, --help            Show this help message and exit."
+    echo ""
+    echo "Default session name format:<ctrl3348>MMDD_HHMMSS"
+    return 0
+  fi
+
   local timestamp=$(date +%Y%m%d_%H%M%S)
   local default_session_name="$timestamp"
   local session_name="$default_session_name"
   local log_file=""
   local command="$@"
 
-  while getopts "n:l:h" opt; do
+  while getopts "n:l:" opt; do
     case "$opt" in
       n)
         session_name="$OPTARG"
@@ -105,6 +135,13 @@ ninja() {
   command="$@"
 
   if [[ -n "$command" ]]; then
+    # セッション名の重複チェック
+    if check_session "$session_name"; then
+      # アクティブなセッションが存在する場合、デフォルト名を使用
+      echo "Session \"$session_name\" already exists, using default session name instead."
+      session_name="$default_session_name"
+    fi
+
     if [[ -n "$log_file" ]]; then
       tmux new-session -d -s "$session_name" \; send-keys "$command > '$log_file' 2>&1" Enter \; detach
     else
