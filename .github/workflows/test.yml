@@ -21,5 +21,4 @@ jobs:
     
     - name: Run tests
       run: |
-        cd test
-        bash test_ninja.sh
+        bash test/test_ninja.sh
