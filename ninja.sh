@@ -129,8 +129,9 @@ ninja() {
   # セッション名の重複チェック（デフォルト名以外の場合のみ）
   if [[ "$session_name" != "${options[default_session_name]}" ]]; then
     session_name=$(generate_unique_session_name "$session_name") || return 1
-    [[ "$session_name" != "$original_name" ]] && 
+    if [[ "$session_name" != "$original_name" ]]; then
       echo "Session \"$original_name\" already exists, using \"$session_name\" instead."
+    fi
   fi
   
   prepare_log_file "${options[log_file]}"
