@@ -100,6 +100,12 @@ create_tmux_session() {
   local command="$2"
   local log_file="$3"
   
+  # セッション名の安全性を検証
+  if [[ ! "$session_name" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+    echo "Error: Invalid session name \"$session_name\". Only alphanumeric characters, underscores, and hyphens are allowed." >&2
+    return 1
+  fi
+  
   # シェルインジェクション対策のためのエスケープ
   local escaped_session_name=$(printf %q "$session_name")
   local escaped_command=$(printf %q "$command")
