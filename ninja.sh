@@ -100,9 +100,9 @@ create_tmux_session() {
   local log_file="$3"
   
   if [[ -n "$log_file" ]]; then
-    tmux new-session -d -s "$session_name" "exec echo \"$command > '$log_file' 2>&1\" & $command > '$log_file' 2>&1" \; detach
+    tmux new-session -d -s "$session_name" "exec echo \"$command > '$log_file' 2>&1\" && $command > '$log_file' 2>&1" \; detach
   else
-    tmux new-session -d -s "$session_name" "exec echo \"$command\" & $command" \; detach
+    tmux new-session -d -s "$session_name" "exec echo \"$command\" && $command" \; detach
   fi
 }
 
