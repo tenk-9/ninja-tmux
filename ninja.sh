@@ -1,38 +1,28 @@
 #!/bin/bash
 
-# Bash 4.3以上が必要（nameref機能を使用するため）
-if (( BASH_VERSINFO[0] < 4 || (BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] < 3) )); then
-  echo "Error: This script requires Bash 4.3 or later (current: $BASH_VERSION)" >&2
-  exit 1
-fi
-
-# セッション管理モジュール
+# セッションの存在チェック関数
 check_session() {
   local session_name="$1"
-  [[ -z "$session_name" ]] && return 1
-  
-  # Check if the session exists using `tmux list-sessions`.
+  # list-sessionsの出力を確認
   if tmux list-sessions -F "#{session_name}" 2>/dev/null | grep -q "^${session_name}$"; then
-    return 0
+    return 0  # セッションが存在する
+  else
+    # has-sessionでも確認（killed状態のセッション用）
+    if ! tmux has-session -t "$session_name" 2>/dev/null; then
+      return 1  # セッションが存在しない
+    fi
   fi
-
-  # Fallback to `tmux has-session` for additional verification.
-  if tmux has-session -t "$session_name" 2>/dev/null; then
-    return 0
-  fi
-
-  # If neither method finds the session, return failure.
-  return 1
 }
 
+# 重複セッション名の処理関数
 generate_unique_session_name() {
   local base_name="$1"
-  [[ -z "$base_name" ]] && { echo "Error: empty session name" >&2; return 1; }
-  
   local new_name="$base_name"
   local counter=1
 
+  # ベース名が既に存在するか確認
   if check_session "$new_name"; then
+    # 連番付きの名前を試す
     while check_session "${base_name}(${counter})"; do
       ((counter++))
     done
@@ -42,74 +32,65 @@ generate_unique_session_name() {
   echo "$new_name"
 }
 
-# ヘルプ表示モジュール
-show_help() {
-  cat << 'EOF'
-Usage: ninja [-n <session_name>] [-l <log_file>] <command> ...
+ninja() {
+  # ヘルプオプションの早期チェック
+  if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
+    echo "Usage: ninja [-n <session_name>] [-l <log_file>] <command> ..."
+    echo ""
+    echo "Options:"
+    echo "  -n <session_name>   Specify the tmux session name."
+    echo "  --session_name <session_name> Specify the tmux session name."
+    echo "  --name <session_name>        Specify the tmux session name."
+    echo "  -l <log_file>       Specify the log file path."
+    echo "  --log <log_file>    Specify the log file path."
+    echo "  -h, --help            Show this help message and exit."
+    echo ""
+    echo "Note: If the specified session name already exists, (n) will be appended"
+    echo "      where n is the next available number."
+    echo "Default session name format: YYYYMMDD_HHMMSS"
+    return 0
+  fi
 
-Options:
-  -n <session_name>         Specify the tmux session name.
-  --session_name <session_name> Specify the tmux session name.
-  --name <session_name>     Specify the tmux session name.
-  -l <log_file>             Specify the log file path.
-  --log <log_file>          Specify the log file path.
-  -h, --help                Show this help message and exit.
+  local timestamp=$(date +%Y%m%d_%H%M%S)
+  local default_session_name="$timestamp"
+  local session_name="$default_session_name"
+  local log_file=""
+  local command=""
 
-Note: If the specified session name already exists, (n) will be appended
-      where n is the next available number.
-Default session name format: YYYYMMDD_HHMMSS
-EOF
-}
-
-# オプション解析モジュール
-parse_options() {
-  local -n opts="$1"
-  shift
-  
-  local default_session_name="$(date +%Y%m%d_%H%M%S)"
-  opts[session_name]="$default_session_name"
-  opts[default_session_name]="$default_session_name"
-  opts[log_file]=""
-  opts[command]=""
-  
+  # オプションの解析
   while [[ $# -gt 0 ]]; do
     case "$1" in
       -n|--session_name|--name)
-        [[ -z "$2" ]] && { echo "Error: $1 requires an argument." >&2; return 1; }
-        opts[session_name]="$2"
-        shift 2
+        if [[ -n "$2" ]]; then
+          session_name="$2"
+          shift 2
+        else
+          echo "Error: $1 requires an argument." >&2
+          return 1
+        fi
         ;;
       -l|--log)
-        [[ -z "$2" ]] && { echo "Error: $1 requires an argument." >&2; return 1; }
-        opts[log_file]="$2"
-        shift 2
+        if [[ -n "$2" ]]; then
+          log_file="$2"
+          shift 2
+        else
+          echo "Error: $1 requires an argument." >&2
+          return 1
+        fi
         ;;
       -*)
         echo "Unknown option: $1" >&2
         return 1
         ;;
       *)
-        opts[command]="$*"
-        return 0
+        # オプションでない引数（コマンド）に到達
+        command="$@"
+        break
         ;;
     esac
   done
-  
-  [[ -z "${opts[command]}" ]] && { echo "Error: No command specified." >&2; return 1; }
-}
 
-# ログファイル準備モジュール
-prepare_log_file() {
-  local log_file="$1"
-  [[ -n "$log_file" ]] && mkdir -p "$(dirname "$log_file")"
-}
-
-# tmuxセッション作成モジュール
-create_tmux_session() {
-  local session_name="$1"
-  local command="$2"
-  local log_file="$3"
-  
+  # ログファイルのディレクトリを作成
   if [[ -n "$log_file" ]]; then
     tmux new-session -d -s "$session_name" bash -c \
     "echo \"[START] $command\" > \"$log_file\"; \

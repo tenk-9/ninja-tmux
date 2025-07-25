@@ -110,7 +110,7 @@ main() {
   cleanup
 
   # テスト結果の表示
-echo -e "\nTest Results:"
+  echo "\nTest Results:"
   if [[ ${#failed_tests[@]} -eq 0 ]]; then
     echo "All tests passed! 🎉"
     exit 0
