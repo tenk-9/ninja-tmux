@@ -4,7 +4,7 @@
 set -e
 
 # 必要な関数をsourceする
-source ../ninja.sh
+source ./ninja.sh
 
 # テストケースの実行結果を保存する配列
 declare -a failed_tests=()
@@ -72,10 +72,10 @@ test_custom_session_name() {
 test_duplicate_session_name() {
   local session_name="duplicate_test"
   # 1回目の実行
-  ninja -n "$session_name" sleep 1 > /dev/null
+  ninja -n "$session_name" -l $TEST_DIR/.log1 yes > /dev/null
   # 2回目の実行（重複）
   local output
-  output=$(ninja -n "$session_name" sleep 1 2>&1)
+  output=$(ninja -n "$session_name" yes 2>&1)
   if echo "$output" | grep -q "session-name : ${session_name}(1)"; then
     return 0
   else
