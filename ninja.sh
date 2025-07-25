@@ -111,10 +111,11 @@ ninja() {
     if [[ -n "$log_file" ]]; then
       echo -e "logfile\t: $log_file"
       # ログ出力ありの場合は、シェル経由で実行してリダイレクト
-      tmux new-session -d -s "$session_name" "exec echo \"$command > '$log_file' 2>&1\" & $command > '$log_file' 2>&1" \; detach
+      tmux new-session -d -s "$session_name" bash -c \
+      "echo \"$command > $log_file 2>&1\"; $command > \"$log_file\" 2>&1"
     else
       # コマンドを直接実行
-      tmux new-session -d -s "$session_name" "exec echo \"$command\" & $command" \; detach
+      tmux new-session -d -s "$session_name" bash -c "echo \"$command\"; $command"
     fi
   else
     echo "Error: No command specified." >&2
