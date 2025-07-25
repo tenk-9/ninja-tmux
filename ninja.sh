@@ -11,8 +11,7 @@ check_session() {
   local session_name="$1"
   [[ -z "$session_name" ]] && return 1
   
-  tmux list-sessions -F "#{session_name}" 2>/dev/null | grep -q "^${session_name}$" ||
-  tmux has-session -t "$session_name" 2>/dev/null
+  tmux list-sessions -F "#{session_name}" 2>/dev/null | grep -q "^${session_name}$" || tmux has-session -t "$session_name" 2>/dev/null
 }
 
 generate_unique_session_name() {
