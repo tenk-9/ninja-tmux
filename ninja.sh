@@ -106,9 +106,9 @@ create_tmux_session() {
   
   if [[ -n "$log_file" ]]; then
     local escaped_log_file=$(printf %q "$log_file")
-    tmux new-session -d -s "$escaped_session_name" "exec echo $escaped_command' > '$escaped_log_file' 2>&1' & $command > '$escaped_log_file' 2>&1" \; detach
+    tmux new-session -d -s "$escaped_session_name" "exec echo \"$escaped_command\" > \"$escaped_log_file\" 2>&1 & \"$escaped_command\" > \"$escaped_log_file\" 2>&1" \; detach
   else
-    tmux new-session -d -s "$escaped_session_name" "exec echo $escaped_command & $command" \; detach
+    tmux new-session -d -s "$escaped_session_name" "exec echo \"$escaped_command\" & \"$escaped_command\"" \; detach
   fi
 }
 
