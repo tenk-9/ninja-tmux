@@ -100,10 +100,15 @@ create_tmux_session() {
   local command="$2"
   local log_file="$3"
   
+  # シェルインジェクション対策のためのエスケープ
+  local escaped_session_name=$(printf %q "$session_name")
+  local escaped_command=$(printf %q "$command")
+  
   if [[ -n "$log_file" ]]; then
-    tmux new-session -d -s "$session_name" "exec echo \"$command > '$log_file' 2>&1\" & $command > '$log_file' 2>&1" \; detach
+    local escaped_log_file=$(printf %q "$log_file")
+    tmux new-session -d -s "$escaped_session_name" "exec echo $escaped_command' > '$escaped_log_file' 2>&1' & $command > '$escaped_log_file' 2>&1" \; detach
   else
-    tmux new-session -d -s "$session_name" "exec echo \"$command\" & $command" \; detach
+    tmux new-session -d -s "$escaped_session_name" "exec echo $escaped_command & $command" \; detach
   fi
 }
 
@@ -130,8 +135,9 @@ ninja() {
   # セッション名の重複チェック（デフォルト名以外の場合のみ）
   if [[ "$session_name" != "${options[default_session_name]}" ]]; then
     session_name=$(generate_unique_session_name "$session_name") || return 1
-    [[ "$session_name" != "$original_name" ]] && 
+    if [[ "$session_name" != "$original_name" ]]; then
       echo "Session \"$original_name\" already exists, using \"$session_name\" instead."
+    fi
   fi
   
   prepare_log_file "${options[log_file]}"
