@@ -99,7 +99,7 @@ tmuxの詳しい使い方については、[tmuxの基本操作ガイド](docs/t
 ## 要件
 
 - tmux
-- Bash
+- Bash 4.3以上（namerefs機能を使用するため）
 
 ## ライセンス
 

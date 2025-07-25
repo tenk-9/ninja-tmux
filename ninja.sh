@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# Bash 4.3以上が必要（nameref機能を使用するため）
+if (( BASH_VERSINFO[0] < 4 || (BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] < 3) )); then
+  echo "Error: This script requires Bash 4.3 or later (current: $BASH_VERSION)" >&2
+  exit 1
+fi
+
 # セッション管理モジュール
 check_session() {
   local session_name="$1"
